@@ -3,8 +3,8 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*' 
-  workflow_dispatch: 
+      - 'v*'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -34,44 +34,34 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Zig
+      - name: Install Zig (Master/Nightly)
         uses: korandoru/setup-zig@v1
         with:
-          zig-version: 0.16.0 
+         
+          zig-version: master 
 
       - name: Build Libraries (ReleaseFast)
+        shell: bash
         run: |
           cd db
-          # Compila a Shared Library (.so, .dylib ou .dll)
+          # Shared
           zig build-lib -O ReleaseFast -target ${{ matrix.target }} -lc -dynamic -femit-h=zigo_db.h zigo_db.zig
-          # Compila a Static Library (.a ou .lib)
+          # Static
           zig build-lib -O ReleaseFast -target ${{ matrix.target }} -lc zigo_db.zig
 
-      - name: Create artifacts directory
-        shell: bash
-        run: mkdir -p release/${{ matrix.artifact }}
-
-      - name: Copy Files (Universal Script)
+      - name: Prepare Artifacts
         shell: bash
         run: |
-          # Copia o header gerado pelo Zig
-          cp db/zigo_db.h release/${{ matrix.artifact }}/
-          
-          # Copia binários de forma agnóstica ao OS (so, a, dylib, dll, lib, pdb)
-          find db -maxdepth 1 -type f \( \
-            -name "*.so" -o \
-            -name "*.a" -o \
-            -name "*.dylib" -o \
-            -name "*.dll" -o \
-            -name "*.lib" -o \
-            -name "*.pdb" \
-          \) -exec cp {} release/${{ matrix.artifact }}/ \;
+          mkdir -p release_files
+          cp db/zigo_db.h release_files/
+          find db -maxdepth 1 -type f \( -name "*.so" -o -name "*.a" -o -name "*.dylib" -o -name "*.dll" -o -name "*.lib" -o -name "*.pdb" \) -exec cp {} release_files/ \;
+          cd release_files && zip -r ../${{ matrix.artifact }}.zip ./*
 
-      - name: Upload artifacts
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: release/${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}.zip
 
   release:
     name: Create GitHub Release
@@ -79,29 +69,28 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
-      contents: write 
-
+      contents: write
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
+          path: all_artifacts
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-         
-          files: artifacts/**/*
-          draft: true 
-          generate_release_notes: true 
+          files: all_artifacts/**/*.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: true
           body: |
-            ## ZigoDB v0.0.3 - Performance Breakthrough
+            ## ZigoDB v0.0.3 - Master Build
             
-            ### Benchmarks (28 Cores)
+            ### Performance Core (28 Cores)
             - **Writes:** 3.1M+ msg/sec
             - **Reads:** 9.8M+ msg/sec
-            - **Latency:** ~0.45µs
+            - **Latency:** 0.45µs avg
             
-            This release implements the **Locker Writer** architecture with cache-line isolation.
+            Compiled with Zig 0.16.0-dev (Master).
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
