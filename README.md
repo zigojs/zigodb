@@ -150,14 +150,39 @@ err := zigodb.Global().LoadChunk("file.rb")
 ### Build
 
 ```bash
-cd go
-go build
+mkdir deps
+cd deps
+git clone https://github.com/zigojs/zigodb.git
+cd zigodb
+make build
+cd ../..
+```
+### Start Project 
+```
+# Initialize your module
+go mod init example.com/myproject
+
+# Copy the required binary and header to your root
+# Windows:
+copy deps\zigodb\db\zigo_db.dll .
+# Linux/macOS:
+cp deps/zigodb/db/zigo_db.so . 2>/dev/null || cp deps/zigodb/db/zigo_db.dylib .
+
+# Copy an example to test
+copy deps\zigodb\examples\01_init\main.go .
+
+# Link Go to the local repository
+go mod edit -replace github.com/zigojs/zigodb=./deps/zigodb
+go mod tidy
+
+# Run it!
+go run main.go
 ```
 
 ### Run Tests
 
 ```bash
-go test ./...
+make test
 ```
 
 ## License
