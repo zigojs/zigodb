@@ -39,45 +39,45 @@ ZigoDB treats memory as a high-speed tunnel:
 2. **Data** is copied directly via SIMD-optimized `memcpy` in Zig.
 3. **Double-Buffering** allows the "Leader Writer" to swap regions and drain data to disk without stopping the world.
 
-## Installation
+## Building from Source
+
+### Prerequisites
+
+- Go 1.21+
+- Zig compiler
+
+### Download and Build
 
 ```bash
-go get github.com/zigojs/zigodb
+mkdir deps
+cd deps
+git clone https://github.com/zigojs/zigodb.git
+cd zigodb
+make build
+cd ../..
 ```
 
 ## Quick Start
 
-```go
-package main
+```bash
+# Initialize your module
+go mod init example.com/myproject
 
-import (
-    "fmt"
-    zigodb "github.com/zigojs/zigodb"
-)
+# Copy the required binary and header to your root
+# Windows:
+copy deps\zigodb\db\zigo_db.dll .
+# Linux/macOS:
+cp deps/zigodb/db/zigo_db.so . 2>/dev/null || cp deps/zigodb/db/zigo_db.dylib .
 
-func main() {
-    // Initialize the database
-    err := zigodb.Init()
-    if err != nil {
-        panic(err)
-    }
-    defer zigodb.Shutdown()
+# Copy an example to test
+copy deps\zigodb\examples\01_init\main.go .
 
-    // Write a message
-    data := []byte(`{"msg": "hello", "user": "world"}`)
-    uuid, err := zigodb.Global().Write(data)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Printf("Wrote message with UUID: %d\n", uuid)
+# Link Go to the local repository
+go mod edit -replace github.com/zigojs/zigodb=./deps/zigodb
+go mod tidy
 
-    // Read the last message
-    lastData, err := zigodb.Global().ReadLast()
-    if err != nil {
-        panic(err)
-    }
-    fmt.Printf("Last message: %s\n", string(lastData))
-}
+# Run it!
+go run main.go 
 ```
 
 ## Examples
@@ -139,46 +139,7 @@ results, err := zigodb.Global().Search("query")
 err := zigodb.Global().ExportChunk("file.rb")
 err := zigodb.Global().LoadChunk("file.rb")
 ```
-
-## Building from Source
-
-### Prerequisites
-
-- Go 1.21+
-- Zig compiler
-
-### Build
-
-```bash
-mkdir deps
-cd deps
-git clone https://github.com/zigojs/zigodb.git
-cd zigodb
-make build
-cd ../..
-```
-### Start Project 
-```
-# Initialize your module
-go mod init example.com/myproject
-
-# Copy the required binary and header to your root
-# Windows:
-copy deps\zigodb\db\zigo_db.dll .
-# Linux/macOS:
-cp deps/zigodb/db/zigo_db.so . 2>/dev/null || cp deps/zigodb/db/zigo_db.dylib .
-
-# Copy an example to test
-copy deps\zigodb\examples\01_init\main.go .
-
-# Link Go to the local repository
-go mod edit -replace github.com/zigojs/zigodb=./deps/zigodb
-go mod tidy
-
-# Run it!
-go run main.go
-```
-
+ 
 ### Run Tests
 
 ```bash
