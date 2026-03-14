@@ -8,8 +8,8 @@
 package zigodb
 
 /*
-#cgo CFLAGS: -I${SRCDIR}/../db
-#cgo LDFLAGS: -L${SRCDIR}/../db -lzigo_db -lm
+#cgo CFLAGS: -I${SRCDIR}/db
+#cgo LDFLAGS: -L${SRCDIR}/db -lzigo_db -lm
 
 #include "zigo_db.h"
 #include <stdlib.h>
