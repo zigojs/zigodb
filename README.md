@@ -1,4 +1,5 @@
 # ZigoDB
+[![Build and Release](https://github.com/zigojs/zigodb/actions/workflows/build.yml/badge.svg)](https://github.com/zigojs/zigodb/actions/workflows/build.yml)
 
 A high-performance embedded database engine built with Zig and Go. 
 Designed for ultra-low latency event streaming, log systems, MMO state management, and real-time AI agent memory.
