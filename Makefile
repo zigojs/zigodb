@@ -26,7 +26,7 @@ endif
 
 # Project paths
 DB_DIR := db
-GO_DIR := go
+GO_DIR := ./
 
 # Zig build settings
 ZIG_TARGET := native-native
