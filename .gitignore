@@ -1,0 +1,40 @@
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+*.pdb
+
+# Go
+*.test
+coverage.txt
+
+# Build artifacts
+go/main
+go/test_*
+go/benchmark/benchmark
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database files
+*.db
+*.sqlite
+*.rb
+*.idx
+*.index
+
+# Storage chunks (generated at runtime)
+go/storage/chunks/*.rb
+go/storage/chunks/*.index
+
+# Temporary files
+*.tmp
+*.log
