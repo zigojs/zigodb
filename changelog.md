@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.4] - 2026-03-15
+
+### Fixed
+- **Mixed Benchmark Read Errors:** Added `committed_entries` counter to fix reader synchronization during region drain transitions. Readers now properly detect empty state (no error) vs actual errors.
+
+### Added
+- **Committed Entries Mechanism:**
+  - New `committed_entries` field in `Region` struct - atomic counter for reader synchronization
+  - Writers increment `committed_entries` after data is written (not before)
+  - Readers use `committed_entries` instead of `cursor` to determine available data
+  - `ReadLast()` returns `nil, nil` for empty state (retry) vs error (failure)
+
 ## [1.0.3] - 2026-03-13
 
 ### Fixed

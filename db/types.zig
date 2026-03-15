@@ -72,6 +72,7 @@ pub const MessageEntry = extern struct {
 pub const Region = struct {
     cursor: u32 align(64), // Aligned to 64 bytes to avoid False Sharing
     active_writers: i32 align(64), // Aligned to 64 bytes to avoid False Sharing
+    committed_entries: u32 align(64), // Committed entries for readers (updated after write)
     entries: []MessageEntry,
     base_ptr: ?*anyopaque,
     allocated_slice: []u8,
@@ -88,6 +89,7 @@ pub const Region = struct {
 
         self.cursor = 0;
         self.active_writers = 0;
+        self.committed_entries = 0;
         return self;
     }
 
@@ -102,6 +104,7 @@ pub const Region = struct {
     pub fn reset(self: *Region) void {
         @atomicStore(u32, &self.cursor, 0, .monotonic);
         @atomicStore(i32, &self.active_writers, 0, .monotonic);
+        @atomicStore(u32, &self.committed_entries, 0, .monotonic);
     }
 
     pub fn deinit(self: *Region, allocator: std.mem.Allocator) void {

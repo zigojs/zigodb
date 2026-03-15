@@ -33,28 +33,31 @@ export fn db_write_raw(room_id: u32, payload_ptr: [*]const u8, payload_len: u32)
     const db = global_db orelse return -2;
     const region = db.getActiveRegion();
 
-    // 1. Pega a ficha pra entrar na sala (increment active_writers)
+    // 1. Take a "ticket" when enters in room (increment active writers)
     _ = @atomicRmw(i32, &region.active_writers, .Add, 1, .monotonic);
 
-    // 2. Aumenta o counter (pega o slot)
+    // 2. Increase the counter (take the slot)
     const idx = @atomicRmw(u32, &region.cursor, .Add, 1, .monotonic);
 
-    // 3. Verifica se estourou o limite da metralhadora
+    // 3. Check if the machine gun's limit has been exceeded.
     if (idx >= db.max_slots) {
         // Rollback - region is full
         _ = @atomicRmw(u32, &region.cursor, .Sub, 1, .monotonic);
         _ = @atomicRmw(i32, &region.active_writers, .Add, -1, .release);
-        return -1; // SIGNAL: Hora de dar o switch!
+        return -1; // SIGNAL: Time to switch!
     }
 
-    // 4. Dispara a escrita no slot fixo (1KB)
+    // 4. Triggers writing to the fixed slot (1KB)
     var entry = &region.entries[idx];
     entry.room_id = room_id;
     entry.timestamp = 0; // Timestamp set by Go side
     entry.data_len = if (payload_len > 992) 992 else payload_len;
     @memcpy(entry.json_data[0..entry.data_len], payload_ptr[0..entry.data_len]);
 
-    // 5. Devolve a ficha (decrement active_writers)
+    // 5. Commit the input (indicates that data is ready to be read)
+    _ = @atomicRmw(u32, &region.committed_entries, .Add, 1, .release);
+
+    // 6. Give back the ticket (decrement active_writers)
     _ = @atomicRmw(i32, &region.active_writers, .Add, -1, .release);
     return 0;
 }
@@ -310,7 +313,10 @@ export fn db_write_raw_cgo(room_id: u32, payload_ptr: [*]const u8, payload_len: 
         entry.data_len = if (payload_len > 992) 992 else payload_len;
         @memcpy(entry.json_data[0..entry.data_len], payload_ptr[0..entry.data_len]);
 
-        // 5. Devolve a ficha
+        // 5. Commita a entrada (indica que dados estão prontos para leitura)
+        _ = @atomicRmw(u32, &region.committed_entries, .Add, 1, .release);
+
+        // 6. Devolve a ficha
         _ = @atomicRmw(i32, &region.active_writers, .Add, -1, .release);
         return 0;
     }
@@ -325,7 +331,7 @@ export fn db_needs_drain_cgo() bool {
 export fn db_get_cursor_cgo() u32 {
     if (global_db) |db| {
         const a = db.getActiveRegion();
-        return a.cursor;
+        return a.committed_entries; // Use committed_entries for readers
     }
     return 0;
 }
@@ -334,8 +340,9 @@ export fn db_get_cursor_cgo() u32 {
 export fn db_get_last_entry_cgo() ?*T.MessageEntry {
     if (global_db) |db| {
         const a = db.getActiveRegion();
-        if (a.cursor > 0) {
-            return &a.entries[a.cursor - 1];
+        const committed = @atomicLoad(u32, &a.committed_entries, .acquire);
+        if (committed > 0) {
+            return &a.entries[committed - 1];
         }
     }
     return null;
@@ -345,7 +352,8 @@ export fn db_get_last_entry_cgo() ?*T.MessageEntry {
 export fn db_get_entry_cgo(index: u32) ?*T.MessageEntry {
     if (global_db) |db| {
         const a = db.getActiveRegion();
-        if (index < a.cursor) {
+        const committed = @atomicLoad(u32, &a.committed_entries, .acquire);
+        if (index < committed) {
             return &a.entries[index];
         }
     }

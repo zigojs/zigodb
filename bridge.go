@@ -400,13 +400,13 @@ func (z *ZigoDB) WriteToRoom(roomID uint32, data []byte) (uint64, error) {
 func (z *ZigoDB) ReadLast() ([]byte, error) {
 	count := z.GetMessageCount()
 	if count == 0 {
-		return nil, errors.New("no messages available")
+		return nil, nil // Empty state, not an error - readers should retry
 	}
 
 	// Get the last entry (index = count - 1)
 	entryPtr := C.db_get_entry_cgo(C.uint32_t(count - 1))
 	if entryPtr == nil {
-		return nil, errors.New("failed to read last entry")
+		return nil, nil // Empty state, not an error
 	}
 
 	// Read data_len at offset 36
@@ -419,7 +419,7 @@ func (z *ZigoDB) ReadLast() ([]byte, error) {
 		return data, nil
 	}
 
-	return nil, errors.New("no data in last entry")
+	return nil, nil // Empty entry, not an error
 }
 
 // ReadLastFromRoom reads the last message from a specific room (T4.11)

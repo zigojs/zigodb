@@ -18,10 +18,10 @@ ZigoDB is a binary message database built with **Zig 0.16+** for high-performanc
 
 ### Double Buffer (RW_A / RW_B)
 
-Two identical memory regions (16MB each). Only one receives active writes:
+Two identical memory regions (32MB each). Only one receives active writes:
 
 ```
-RW_A (16MB) ←→ RW_B (16MB)
+RW_A (16MB) ←→ RW_B (32MB)
     ↑              ↑
 region_bit (atomic u32)
 ```
@@ -96,11 +96,12 @@ pub const MessageEntry = extern struct {
 
 ```zig
 pub const Region = struct {
-    cursor:          u32,           // Next free slot
-    active_writers:  i32,           // Active writers (drain)
-    entries:         []MessageEntry, // Array of messages
-    base_ptr:        ?*anyopaque,    // Aligned memory
-    allocated_slice: []u8,           // Backing memory
+    cursor:             u32,           // Next free slot
+    active_writers:    i32,           // Active writers (drain sync)
+    committed_entries: u32,           // Committed entries for readers
+    entries:           []MessageEntry, // Array of messages
+    base_ptr:          ?*anyopaque,    // Aligned memory
+    allocated_slice:   []u8,           // Backing memory
 };
 ```
 
@@ -278,6 +279,7 @@ make test-replication
 ### Core Features
 - **Double Buffer** - RW_A / RW_B dual 16MB regions
 - **Atomic Cursor** - Multi-core write safety via fetch-add
+- **Committed Entries** - Atomic counter for reader synchronization (zero-copy reads)
 - **Drain Mechanism** - 90% capacity, 10k events, 30s triggers
 - **Search Pool** - 1024 x 64KB segments for caching
 - **Memory-mapped chunks** - Zero-copy file loading
